@@ -32,7 +32,7 @@ def task_listener_reverse(gearman_worker, gearman_job):
         # parse b64 img
         s = gearman_job.data
         img_s = json.loads(s)
-        bboxes = map(tuple, img_s['bbox'])
+        bboxes = list(map(tuple, img_s['bbox']))
         mode = 0
 
         img_start = time.time()
@@ -41,7 +41,10 @@ def task_listener_reverse(gearman_worker, gearman_job):
         nparr = np.fromstring(d64, np.uint8)
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         img_name = './static/upload/{}.jpg'.format(int(time.time()))
-        cv2.imwrite(img_name, image)
+        img_copy = image.copy()
+        for box in bboxes:
+            cv2.rectangle(img_copy, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 2)
+        cv2.imwrite(img_name, img_copy)
         img_end = time.time()
 
         if mode == 0:
@@ -51,7 +54,9 @@ def task_listener_reverse(gearman_worker, gearman_job):
             persons = []
 
             start = time.time()
+            print(bboxes)
             for bbox in bboxes:
+                print("inference feature")
                 infer_start = time.time()
                 img_ori_fea = face_reco(image, bbox)
                 _, img_ori_fea = face_reco.l2_norm(img_ori_fea)
@@ -60,12 +65,15 @@ def task_listener_reverse(gearman_worker, gearman_job):
                 print("inference time cost : {}".format(infer_end-infer_start))
 
             for img_ori_fea in img_ori_fea_arr:
+                print("比对")
                 for i in range(len(personDB['persons'])):
                     person = compare_persons(img_ori_fea[0][0], i)
                     person['bbox'] = img_ori_fea[1]
+                    print(person)
                     if person['confidence'] >= threshold_default:
                         persons.append(person)
                         break
+
             end = time.time()
             print('**********')
             print('img time cost %s' % str(img_end-img_start))
@@ -75,6 +83,9 @@ def task_listener_reverse(gearman_worker, gearman_job):
             #return dic
             dic_json = dict(person=persons, infer_time=(end-start), img_time=(img_end-img_start))
             print(dic_json)
+            with open("test.log", 'a+', encoding='utf8') as f:
+                f.write(str(persons))
+                f.write('\n')
             return json.dumps(obj=dic_json)
         elif mode == 1:
             # face get feature
