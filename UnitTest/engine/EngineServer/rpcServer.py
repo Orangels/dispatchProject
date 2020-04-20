@@ -10,11 +10,18 @@ from utils.config_utils import *
 import numpy as np
 import base64
 
+sys.path.append('/home/user/DHP/DPH/pycode/Pet-engine')
+sys.path.append('/home/user/DHP/DPH/pycode/caffe2pth')
+
+from modules import pet_engine
+from projects.face_3dkeypoints.utils.face_affine import get_affine_imgs
+
+keypoint = 0
 face_reco = 0
 # persons feature databaser
 y = yaml_config()
 
-threshold_default = 0.7
+threshold_default = 0.5
 gm_worker = gearman.GearmanWorker(['localhost:4730'])
 
 
@@ -32,7 +39,7 @@ def task_listener_reverse(gearman_worker, gearman_job):
         # parse b64 img
         s = gearman_job.data
         img_s = json.loads(s)
-        bboxes = list(map(tuple, img_s['bbox']))
+        bboxes = img_s['bbox']
         mode = 0
 
         img_start = time.time()
@@ -55,20 +62,20 @@ def task_listener_reverse(gearman_worker, gearman_job):
 
             start = time.time()
             print(bboxes)
-            for bbox in bboxes:
-                print("inference feature")
-                infer_start = time.time()
-                img_ori_fea = face_reco(image, bbox)
-                _, img_ori_fea = face_reco.l2_norm(img_ori_fea)
-                img_ori_fea_arr.append((img_ori_fea, bbox))
-                infer_end = time.time()
-                print("inference time cost : {}".format(infer_end-infer_start))
 
-            for img_ori_fea in img_ori_fea_arr:
+            print("inference feature")
+            infer_start = time.time()
+            img_vis, pts = keypoint(image, bboxes)
+            crop_imgs = get_affine_imgs(pts, image)
+            features_arr = face_reco(crop_imgs)
+            infer_end = time.time()
+            print("inference time cost : {}".format(infer_end - infer_start))
+
+            for img_ori_fea in features_arr:
                 print("比对")
                 for i in range(len(personDB['persons'])):
-                    person = compare_persons(img_ori_fea[0][0], i)
-                    person['bbox'] = img_ori_fea[1]
+                    person = compare_persons(img_ori_fea[0], i)
+                    # person['bbox'] = img_ori_fea[1]
                     print(person)
                     if person['confidence'] >= threshold_default:
                         persons.append(person)
@@ -121,19 +128,25 @@ def cosine_similarity(vec1, vec2):
     return vec1.dot(vec2) / (len_vec1 * len_vec2)
 
 
-def add_persons(face_reco):
+def add_persons():
     global y
     personDB = y.config['personDB']
 
     for i in range(len(personDB['persons'])):
         if 'feature' in personDB['persons'][i].keys():
             continue
-        img1 = cv2.imread(personDB['persons'][i]['img'])
-        a = face_reco(img1, tuple(personDB['persons'][i]['bbox']))
-        # print(a)
-        _, A = face_reco.l2_norm(a)
-        # print(A)
-        personDB['persons'][i]['feature'] = A[0].tolist()
+        img = cv2.imread(personDB['persons'][i]['img'])
+
+        module1 = pet_engine.MODULES['Face3DKpts']
+        keypoint = module1()
+        module2 = pet_engine.MODULES['FaceReco_affined']
+        face_reco = module2()
+
+        img_vis, pts = keypoint(img, [personDB['persons'][i]['bbox']])
+        crop_imgs = get_affine_imgs(pts, img)
+        features1 = face_reco(crop_imgs)
+
+        personDB['persons'][i]['feature'] = features1[0][0, :].tolist()
     y.config = dict(personDB=personDB)
 
 
@@ -158,15 +171,21 @@ def compare_persons_dbs(person_0, person_1):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        face_reco = FaceRecognise()
+        module_kp = pet_engine.MODULES['Face3DKpts']
+        keypoint = module_kp()
+        module_face = pet_engine.MODULES['FaceReco_affined']
+        face_reco = module_face()
     else:
         channel_id = int(sys.argv[1])
-        face_reco = FaceRecognise(gpu_id=channel_id)
+        module_kp = pet_engine.MODULES['Face3DKpts']
+        keypoint = module_kp()
+        module_face = pet_engine.MODULES['FaceReco_affined']
+        face_reco = module_face()
     print('worker start')
     gm_worker.set_client_id('python-worker')
     gm_worker.register_task('DHP_face', task_listener_reverse)
     gm_worker.work()
 
-    # face_reco = FaceRecognise()
-    # add_persons(face_reco)
+
+    # add_persons()
     # compare_persons_dbs(0, 1)
