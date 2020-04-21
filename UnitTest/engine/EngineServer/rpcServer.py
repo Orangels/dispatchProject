@@ -7,14 +7,21 @@ import gearman
 import traceback
 from face_engine import FaceRecognise
 from utils.config_utils import *
+from tools.utils import *
 import numpy as np
 import base64
+import uuid
 
 sys.path.append('/home/user/DHP/DPH/pycode/Pet-engine')
 sys.path.append('/home/user/DHP/DPH/pycode/caffe2pth')
 
 from modules import pet_engine
 from projects.face_3dkeypoints.utils.face_affine import get_affine_imgs
+
+UPLOAD_FOLDER = 'static/uploads/'  # 保存文件位置
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+upload_pic_url = 'http://127.0.0.1:5000/waring_img'
 
 keypoint = 0
 face_reco = 0
@@ -23,6 +30,13 @@ y = yaml_config()
 
 threshold_default = 0.5
 gm_worker = gearman.GearmanWorker(['localhost:4730'])
+
+
+def random_filename(file):
+    file_name, extension_name = os.path.splitext(file)
+    random_name = uuid.uuid4().hex
+    # random_name = str(random.randint(1, 10000))
+    return file_name + random_name + extension_name
 
 
 def task_listener_reverse(gearman_worker, gearman_job):
@@ -36,6 +50,7 @@ def task_listener_reverse(gearman_worker, gearman_job):
     global y
 
     try:
+        print('收到图片')
         # parse b64 img
         s = gearman_job.data
         img_s = json.loads(s)
@@ -47,11 +62,16 @@ def task_listener_reverse(gearman_worker, gearman_job):
         d64 = base64.b64decode(img_s['imgs'])
         nparr = np.fromstring(d64, np.uint8)
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        img_name = './static/upload/{}.jpg'.format(int(time.time()))
+        img_name = '{}.jpg'.format(int(time.time()))
+        file_name = random_filename(img_name)
+        filePath_ori = BASE_DIR + '/' + UPLOAD_FOLDER
+        path, date_path = get_state_filepath(filePath_ori, file_name)
+        url_path = '/' + UPLOAD_FOLDER + date_path + file_name
+
         img_copy = image.copy()
         for box in bboxes:
             cv2.rectangle(img_copy, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 2)
-        cv2.imwrite(img_name, img_copy)
+        cv2.imwrite(path, img_copy)
         img_end = time.time()
 
         if mode == 0:
@@ -71,11 +91,14 @@ def task_listener_reverse(gearman_worker, gearman_job):
             infer_end = time.time()
             print("inference time cost : {}".format(infer_end - infer_start))
 
-            for img_ori_fea in features_arr:
+            for j, img_ori_fea in enumerate(features_arr):
                 print("比对")
                 for i in range(len(personDB['persons'])):
                     person = compare_persons(img_ori_fea[0], i)
-                    # person['bbox'] = img_ori_fea[1]
+                    person['bbox'] = bboxes[j]
+                    person['img'] = url_path
+                    person['date'] = get_date_str(time.time())
+                    person['rec'] = True
                     print(person)
                     if person['confidence'] >= threshold_default:
                         persons.append(person)
@@ -88,11 +111,17 @@ def task_listener_reverse(gearman_worker, gearman_job):
             print('time cost %s' % str(end-start))
             print('**********')
             #return dic
-            dic_json = dict(person=persons, infer_time=(end-start), img_time=(img_end-img_start))
+            if len(persons) == 0:
+                person = dict(name="None", img=url_path, rec=False,
+                            bbox=bboxes[0], confidence=-1, date=get_date_str(time.time()))
+                persons.append(person)
+            dic_json = dict(persons=persons, infer_time=(end-start), img_time=(img_end-img_start))
             print(dic_json)
-            with open("test.log", 'a+', encoding='utf8') as f:
+            postMethod(upload_pic_url, dic_json)
+            with open("./log/log.txt", 'a+', encoding='utf8') as f:
                 f.write(str(persons))
                 f.write('\n')
+
             return json.dumps(obj=dic_json)
         elif mode == 1:
             # face get feature
