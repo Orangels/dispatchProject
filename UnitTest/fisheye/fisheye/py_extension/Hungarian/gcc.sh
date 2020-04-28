@@ -1,0 +1,1 @@
+g++ -std=c++11 -shared -fPIC -o libHungarian.so main.cpp Hungarian.cpp

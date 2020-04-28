@@ -1,0 +1,8 @@
+FACE_LIB:
+  DB_NAME: 'Face_lib'
+  COL_NAME: 'face'
+  MATCH_TH: 0.5
+PET_ENGINE:
+  USE_ENGINE: True
+  PATH: '/home/user/Program/Share/wzh/Pet-engine'
+  CFG: '/home/user/Program/Share/wzh/Pet-engine/cfgs/face_cuda.yaml'

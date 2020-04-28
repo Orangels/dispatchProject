@@ -14,6 +14,7 @@ from werkzeug.routing import BaseConverter
 import random
 import traceback
 from tools.utils import *
+from utils.config_utils import *
 
 
 class RegexConverter(BaseConverter):
@@ -25,6 +26,7 @@ class RegexConverter(BaseConverter):
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads/'  # 保存文件位置
 app.url_map.converters['regex'] = RegexConverter
+
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 CORS(app, resources=r'/*')
@@ -47,6 +49,7 @@ def post_new_waring_img():
         data = unquote(request.data.decode(), 'utf-8')
         client_params = json.loads(data)['persons']
         # print(client_params)
+        time.sleep(6)
         socketio.emit('new_state', {
             'result': client_params
         },
@@ -74,6 +77,73 @@ def device_info():
         print('***********')
         dic = dict(code=400, result='error')
         return jsonify(dic)
+
+
+@app.route('/get_rtmp_url', methods=['POST'])
+def get_rtmp_url():
+    try:
+        y = yaml_config()
+        rtmpUrls = y.config['rtmpUrl']
+        dic = dict(code=200, result=rtmpUrls)
+        return jsonify(dic)
+    except Exception as e:
+        print('***********')
+        print(e)
+        traceback.print_exc()
+        print('***********')
+        dic = dict(code=400, result='error')
+        return jsonify(dic)
+
+
+@app.route('/add_rtmp_url', methods=['POST'])
+def add_rtmp_url():
+    try:
+        data = request.json
+        rtmp_url_new = data['url']
+        rtmp_url_new = "rtmp://{}:1935/hls/room.m3u8".format(rtmp_url_new)
+        y = yaml_config()
+        rtmpUrls = y.config['rtmpUrl']
+        if rtmp_url_new in rtmpUrls['url']:
+            dic = dict(code=400, result=rtmpUrls, message="已存在")
+            return jsonify(dic)
+        else:
+            rtmpUrls['url'].append(rtmp_url_new)
+            y.config = dict(rtmpUrl=rtmpUrls)
+        dic = dict(code=200, result=rtmpUrls)
+        return jsonify(dic)
+    except Exception as e:
+        print('***********')
+        print(e)
+        traceback.print_exc()
+        print('***********')
+        dic = dict(code=400, result='error')
+        return jsonify(dic)
+
+
+@app.route('/del_rtmp_url', methods=['POST'])
+def del_rtmp_url():
+    try:
+        data = request.json
+        rtmp_url_new = data['url']
+        rtmp_url_new = "rtmp://{}:1935/hls/room.m3u8".format(rtmp_url_new)
+        y = yaml_config()
+        rtmpUrls = y.config['rtmpUrl']
+        if rtmp_url_new in rtmpUrls['url']:
+            rtmpUrls['url'].remove(rtmp_url_new)
+            y.config = dict(rtmpUrl=rtmpUrls)
+        else:
+            dic = dict(code=400, result=rtmpUrls, message="不存在")
+            return jsonify(dic)
+        dic = dict(code=200, result=rtmpUrls)
+        return jsonify(dic)
+    except Exception as e:
+        print('***********')
+        print(e)
+        traceback.print_exc()
+        print('***********')
+        dic = dict(code=400, result='error')
+        return jsonify(dic)
+
 
 
 @socketio.on('test_message', namespace='/Camera_Web_ws')

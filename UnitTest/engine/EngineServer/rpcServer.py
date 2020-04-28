@@ -12,11 +12,10 @@ import numpy as np
 import base64
 import uuid
 
-sys.path.append('/home/user/DHP/DPH/pycode/Pet-engine')
-sys.path.append('/home/user/DHP/DPH/pycode/caffe2pth')
+sys.path.append('./Pet-face-lib')
+sys.path.append('./Pet-face-lib/tools')
+from tools.face_lib import *
 
-from modules import pet_engine
-from projects.face_3dkeypoints.utils.face_affine import get_affine_imgs
 
 UPLOAD_FOLDER = 'static/uploads/'  # 保存文件位置
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -25,6 +24,7 @@ upload_pic_url = 'http://127.0.0.1:5000/waring_img'
 
 keypoint = 0
 face_reco = 0
+face_lib = 0
 # persons feature databaser
 y = yaml_config()
 
@@ -62,16 +62,8 @@ def task_listener_reverse(gearman_worker, gearman_job):
         d64 = base64.b64decode(img_s['imgs'])
         nparr = np.fromstring(d64, np.uint8)
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        img_name = '{}.jpg'.format(int(time.time()))
-        file_name = random_filename(img_name)
-        filePath_ori = BASE_DIR + '/' + UPLOAD_FOLDER
-        path, date_path = get_state_filepath(filePath_ori, file_name)
-        url_path = '/' + UPLOAD_FOLDER + date_path + file_name
+        cv2.imwrite('ori.jpg', image)
 
-        img_copy = image.copy()
-        for box in bboxes:
-            cv2.rectangle(img_copy, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 2)
-        cv2.imwrite(path, img_copy)
         img_end = time.time()
 
         if mode == 0:
@@ -83,26 +75,43 @@ def task_listener_reverse(gearman_worker, gearman_job):
             start = time.time()
             print(bboxes)
 
-            print("inference feature")
-            infer_start = time.time()
-            img_vis, pts = keypoint(image, bboxes)
-            crop_imgs = get_affine_imgs(pts, image)
-            features_arr = face_reco(crop_imgs)
-            infer_end = time.time()
-            print("inference time cost : {}".format(infer_end - infer_start))
+            for i, box in enumerate(bboxes):
+                # output_dict = face_lib.query_face_db_with_box(image, box)
+                output_dict = face_lib.query_face_db(image)
+                # print(output_dict)
 
-            for j, img_ori_fea in enumerate(features_arr):
-                print("比对")
-                for i in range(len(personDB['persons'])):
-                    person = compare_persons(img_ori_fea[0], i)
-                    person['bbox'] = bboxes[j]
-                    person['img'] = url_path
-                    person['date'] = get_date_str(time.time())
+                img_name = '{}.jpg'.format(int(time.time()))
+                file_name = random_filename(img_name)
+                filePath_ori = BASE_DIR + '/' + UPLOAD_FOLDER
+                path, date_path = get_state_filepath(filePath_ori, file_name)
+                url_path = '/' + UPLOAD_FOLDER + date_path + file_name
+
+                # write img
+                # img_copy = image.copy()
+                # cv2.rectangle(img_copy, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 2)
+                # cv2.imwrite(path, img_copy)
+                cv2.imwrite(path, output_dict['crop_img'])
+
+                print('******')
+                print(path)
+                print(url_path)
+                print('******')
+                person = {}
+                person['bbox'] = box
+                person['img'] = url_path
+                person['date'] = get_date_str(time.time())
+                if output_dict['id'] != -1:
                     person['rec'] = True
-                    print(person)
-                    if person['confidence'] >= threshold_default:
-                        persons.append(person)
-                        break
+                else:
+                    person['rec'] = False
+                person['name'] = output_dict['name']
+                person['id'] = output_dict['id']
+                person['score'] = output_dict['score']
+                persons.append(person)
+
+            # print('score ****')
+            # print(face_lib.query_face_db(image)['score'])
+            # print('score ****')
 
             end = time.time()
             print('**********')
@@ -200,21 +209,19 @@ def compare_persons_dbs(person_0, person_1):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        module_kp = pet_engine.MODULES['Face3DKpts']
-        keypoint = module_kp()
-        module_face = pet_engine.MODULES['FaceReco_affined']
-        face_reco = module_face()
+        face_lib = FaceLib()
     else:
         channel_id = int(sys.argv[1])
-        module_kp = pet_engine.MODULES['Face3DKpts']
-        keypoint = module_kp()
-        module_face = pet_engine.MODULES['FaceReco_affined']
-        face_reco = module_face()
+        face_lib = FaceLib()
     print('worker start')
     gm_worker.set_client_id('python-worker')
     gm_worker.register_task('DHP_face', task_listener_reverse)
     gm_worker.work()
 
-
+    # img_1 = cv2.imread('ori.jpg')
+    # output_dict = face_lib.query_face_db(img_1)
+    # print(output_dict)
+    # output_dict = face_lib.query_face_db_with_box(img_1, [1156, 704, 1238, 788])
+    # print(output_dict)
     # add_persons()
     # compare_persons_dbs(0, 1)

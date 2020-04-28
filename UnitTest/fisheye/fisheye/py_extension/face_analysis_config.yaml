@@ -1,0 +1,82 @@
+LOG: 'logging.INFO' # DEBUG ,INFO , ERROR
+LOADER: 'tensorrt_loader'
+GLOBAL:
+  BANNER: 'Face Analysis System'
+  VISION_PROJECT_ROOT: '/home/lidachong/VisionProject'
+FACEDEMO:
+  QUANTITY: 0.4
+  SCREEN_STATE_TH: 0.01
+  USE_VERIFY: True
+  SHOW_PIC: True
+  IS_LOAD: True
+  LOAD_VERIFY_MODEL: False
+  SAVE_PIC: False
+  FULLSCREEN: False
+  VERIFY_BATCH_SIZE: 1
+  LDMK_BATCH_SIZE: 4
+  DRAW_IMG: True ##########
+  SCREEN_STATE: False
+  USE_AGE: True
+  DRAW_CHINESE: False ##############
+  JITTER_FACE: False
+  USE_BRIGHTNESS: False
+BUSS:
+  TRACK:
+    MAX_MISMATCH_TIMES: {"default": 80}##############
+  ASSESS:
+    MAX_SIZE: {"default": 1000}
+    MIN_SIZE: {"default": 64}
+    MAX_ANGLE_YAW: {"default": 20}
+    MAX_ANGLE_PITCH: {"default": 30}
+    MAX_ANGLE_ROLL: {"default": 50}
+    MIN_BOX_SCORE: {"default": 0.31}############## 
+    MAX_BRIGHTNESS: {"default": 255}
+    MIN_BRIGHTNESS: {"default": 0}
+  VERIFY:
+    THRESH: {"default": 0.5}
+  OTHER:
+    KPS_ON: {"default": False}# vertify######1
+  COUNT:
+    # ROI_AREA: {"default": None}
+    # ENTRANCE_LINE: {"default": None}
+    ENTRANCE_DIRECTION: {"default": None}
+    ANGLE: {"default": 85}
+    VECTOR_LEN: {"default": 0.5}
+    #ROI_AREA: {"default": [[500, 20], [1200, 20], [1200, 400], [500, 400]]}
+    #ENTRANCE_LINE: {"default": [[300, 420], [1500, 420]]}
+    ROI_AREA: {"default": [[30, 20], [850, 20], [850, 400], [80, 400]]}
+    ENTRANCE_LINE: {"default": [[20, 420], [950, 420]]}
+    #ENTRANCE_DIRECTION: {"default": [[1000, 310], [1200, 460]]}
+ALG:
+  DET:
+    MODEL: 'ckpts/ssd/wider_face/ssdlite/ssdlite_MV1-1.0-BN-PROB02_512x512_1x_COCO/ssdlite_MV1-1.0-BN-PROB02_512x512_1x_COCO.yaml'
+  ASSESS:
+    MODEL: "ASSESS"
+    MAX_SIZE: 1000
+    MIN_SIZE: 1
+    MAX_ANGLE_YAW: 360
+    MAX_ANGLE_PITCH: 360
+    MAX_ANGLE_ROLL: 360
+    L2_NORM: -10.0
+    MIN_BOX_SCORE: 0.5
+    MAX_BRIGHTNESS: 255
+    MIN_BRIGHTNESS: 0
+  VERIFY:
+    MODEL:
+      CFG: 'ckpts/cls/face_verify/MobileFaceNetVerify/MobileFaceNetVerify.yaml'
+      NAME: 'wiwide_origin'
+      CFG2: 'ckpts/cls/face_verify/MobileFaceNetVerify/MobileFaceNetVerify.yaml'
+      ENSUMBLE: False
+OTHER:
+  COUNT_PLAN_A: False
+  API_PLAN_A: True
+  DBMODEL_TEST: True
+  COUNT_MODE: True
+  COUNT_DRAW: True
+  COUNT_DRAW_LESS: True
+  DRAW_TRACK: True
+  DRAW_HEAD: True
+  DRAW_ENTRA_LINE: True
+  DRAW_DIRECTION: False
+  DRAW_ROI: True
+  DRAW_TRACK_NUM: 50 #################

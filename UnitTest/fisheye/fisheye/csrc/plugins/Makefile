@@ -1,0 +1,4 @@
+nvcc -o gn test_GN.cpp /usr/src/tensorrt/samples/common/logger.cpp ../cuda/groupnorm.cu -I./../cuda/  -I/usr/local/cuda/include -I/home/user/package/pytorch/third_party/onnx-tensorrt -L/usr/local/cuda/lib64 -lcudart -lcuda -I/home/user/package/cub-1.8.0 -I/usr/src/tensorrt/samples/common/ -L/usr/lib/x86_64-linux-gnu -lnvinfer  -lnvparsers -lnvinfer_plugin -lnvonnxparser
+
+
+nvcc -o gn test_GN.cpp ../cuda/groupnorm.cu /usr/src/tensorrt/samples/common/logger.cpp -I/home/user/package/cub-1.8.0 -I/usr/src/tensorrt/samples/common/ -I./../cuda/ -L/usr/local/cuda/lib64 -lcudart -lcuda -L/usr/local/lib/ -lnvonnxparser -L/usr/lib/x86_64-linux-gnu/ -lnvinfer  -lnvparsers -lnvinfer_plugin
