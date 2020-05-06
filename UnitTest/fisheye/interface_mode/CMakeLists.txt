@@ -23,6 +23,8 @@ endif ()
 
 message(${OpenCV_INCLUDE_DIRS})
 
+file(GLOB gcamera ${CMAKE_CURRENT_SOURCE_DIR}/fishCamHandler/*cpp)
+
 include_directories(
         includes
         ${OpenCV_INCLUDE_DIRS}
@@ -34,10 +36,15 @@ link_libraries(
         ${OpenCV_LIBS}
         ${CMAKE_CURRENT_SOURCE_DIR}/IMV/lib/libIMV1.so
         gflags
-        GLEW glfw3 GL X11 Xi Xrandr Xxf86vm Xinerama Xcursor rt m dl
+        GLEW glfw3 GL
+        X11 Xrandr Xxf86vm Xinerama Xcursor rt m dl
+#        Xi Xrandr Xxf86vm Xinerama Xcursor rt m dl
         cuda
         ${CUDA_LIBRARIES}
 
 )
 
-add_executable(ls_test main.cpp cameraHandler.cpp )
+
+
+#add_executable(ls_test main.cpp cameraHandler.cpp )
+add_executable(ls_test_g test.cpp ${gcamera})

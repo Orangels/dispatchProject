@@ -76,8 +76,8 @@ def task_listener_reverse(gearman_worker, gearman_job):
             print(bboxes)
 
             for i, box in enumerate(bboxes):
-                # output_dict = face_lib.query_face_db_with_box(image, box)
-                output_dict = face_lib.query_face_db(image)
+                output_dict = face_lib.query_face_db_with_box(image, box)
+                # output_dict = face_lib.query_face_db(image)
                 # print(output_dict)
 
                 img_name = '{}.jpg'.format(int(time.time()))
@@ -127,9 +127,10 @@ def task_listener_reverse(gearman_worker, gearman_job):
             dic_json = dict(persons=persons, infer_time=(end-start), img_time=(img_end-img_start))
             print(dic_json)
             postMethod(upload_pic_url, dic_json)
-            with open("./log/log.txt", 'a+', encoding='utf8') as f:
-                f.write(str(persons))
-                f.write('\n')
+            
+            # with open("./log/log.txt", 'a+', encoding='utf8') as f:
+            #     f.write(str(persons))
+            #     f.write('\n')
 
             return json.dumps(obj=dic_json)
         elif mode == 1:

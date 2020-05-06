@@ -1,0 +1,6 @@
+//g++ -c -o deepstream_test1_app.o -DPLATFORM_TEGRA -I/home/nano/Downloads/deepstream_sdk_v4.0.2_jetson/sources/includes -I/usr/local/cuda/targets/aarch64-linux/include/ -I/usr/include/opencv4/ `pkg-config --cflags gstreamer-1.0` deepstream_test1_app.cpp
+g++ -c -o deepstream_test1_app.o -I/home/nano/Downloads/deepstream_sdk_v4.0.2_jetson/sources/includes -I/usr/local/cuda/targets/aarch64-linux/include/ -I/usr/include/opencv4/ `pkg-config --cflags gstreamer-1.0` deepstream_test1_app.cpp
+#g++ -o deepstream-test1-app-ls deepstream_test1_app.o `pkg-config --libs gstreamer-1.0` -L/opt/nvidia/deepstream/deepstream-4.0/lib/ -lnvdsgst_meta -lnvds_meta -Wl,-rpath,/opt/nvidia/deepstream/deepstream-4.0/lib/ -lnvbufsurface -lopencv_imgcodecs -lopencv_core -lopencv_imgproc -L/usr/local/cuda/targets/aarch64-linux/lib/ -lnvbufsurftransform -lcuda -lcudart
+g++ -o deepstream-test1-app-ls deepstream_test1_app.o `pkg-config --libs gstreamer-1.0` -L/opt/nvidia/deepstream/deepstream-4.0/lib/ -lnvdsgst_meta -lnvds_meta -Wl,-rpath,/opt/nvidia/deepstream/deepstream-4.0/lib/ -lnvbufsurface -lopencv_imgcodecs -lopencv_core -lopencv_imgproc -L/usr/local/cuda/targets/aarch64-linux/lib/ -lnvbufsurftransform  -lcudart
+
+/home/nano/Downloads/deepstream_sdk_v4.0.2_jetson/samples/streams/sample_720p.h264

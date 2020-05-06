@@ -34,4 +34,4 @@ imgs/*
 *.png
 *.onnx
 UnitTest/fisheye/IVE_SDK_2.3.12.1_Linux/
-*weight*
+*weights/*

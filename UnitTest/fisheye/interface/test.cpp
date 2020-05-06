@@ -97,7 +97,7 @@ int main(int argc, char *argv[]){
     int frame_num = 1000;
     int64_t sum = 0;
     while (cap.read(src)){
-        if (frame_num > 1200) break;
+        if (frame_num > 1010) break;
         frame_num++;
 
         auto perimeter_reader = [&](){
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]){
         cv::imwrite(img_path_center, dst_center);
 //        cv::imwrite(img_path_ori, dst_perimeter_resize);
     }
-    cout << "avg time cost : " << sum/200 << endl;
+    cout << "avg time cost : " << sum/10 << endl;
 
 
     return 0;
