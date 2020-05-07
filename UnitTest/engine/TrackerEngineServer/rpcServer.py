@@ -108,6 +108,7 @@ def task_listener_reverse(gearman_worker, gearman_job):
                 person['name'] = output_dict['name']
                 person['id'] = output_dict['id']
                 person['score'] = output_dict['score']
+                person['timestamp'] = int(img_start*1000)
                 persons.append(person)
 
             # print('score ****')
@@ -122,7 +123,7 @@ def task_listener_reverse(gearman_worker, gearman_job):
             print('**********')
             #return dic
             if len(persons) == 0:
-                person = dict(name="None", img=url_path, rec=False, id=-1,
+                person = dict(name="None", img=url_path, rec=False, id=-1, timestamp=int(img_start*1000),
                             bbox=bboxes[0], confidence=-1, date=get_date_str(time.time()))
                 persons.append(person)
             dic_json = dict(persons=persons, infer_time=(end-start), img_time=(img_end-img_start))

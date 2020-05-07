@@ -26,7 +26,7 @@ def clent_person():
     gm_client = gearman.GearmanClient(['127.0.0.1:4730'])
     persons = []
     person = dict(name="None", rec=False, id=-1,
-                confidence=-1, timestamp=int(time.time()))
+                confidence=-1, timestamp=int(time.time()*1000))
     persons.append(person)
     json_str = json.dumps(dict(persons=persons))
     print(json_str)
