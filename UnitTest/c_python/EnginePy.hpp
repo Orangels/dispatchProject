@@ -19,8 +19,9 @@ public:
     PyObject* m_pHandle = NULL;
 public:
     Engine_api();
+    Engine_api(std::string pyClass);
     ~Engine_api();
-    void get_result(Mat frame);
+    vector<int> get_result(Mat frame, std::string mode);
     void test();
 };
 

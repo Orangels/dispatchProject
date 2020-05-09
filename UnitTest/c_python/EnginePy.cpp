@@ -27,25 +27,25 @@ Engine_api::Engine_api()
         PyRun_SimpleString("import sys");
         PyRun_SimpleString("sys.path.append('../')");
 
-        pFile = PyUnicode_FromString("engine_api");
+        pFile = PyUnicode_FromString("tracker_api");
         pModule = PyImport_Import(pFile);
         if (!pModule)
         {
-            printf("PyImport_Import Engine_api.py failed!\n");
+            printf("PyImport_Import tracker_api.py failed!\n");
             break;
         }
 
         m_pDict = PyModule_GetDict(pModule);
         if (!m_pDict)
         {
-            printf("PyModule_GetDict Engine_api.py failed!\n");
+            printf("PyModule_GetDict tracker_api.py failed!\n");
             break;
         }
 
         pClass = PyDict_GetItemString(m_pDict, "ObjectApi");
         if (!pClass || !PyCallable_Check(pClass))
         {
-            printf("PyDict_GetItemString Engine_api failed!\n");
+            printf("PyDict_GetItemString tracker_api failed!\n");
             break;
         }
 
@@ -73,6 +73,79 @@ Engine_api::Engine_api()
     printf("Engine_api::Engine_api() end!\n");
 }
 
+
+Engine_api::Engine_api(std::string pyClass)
+{
+    PyObject* pFile = NULL;
+    PyObject* pModule = NULL;
+    PyObject* pClass = NULL;
+
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure(); //申请获取GIL
+    Py_BEGIN_ALLOW_THREADS;
+    Py_BLOCK_THREADS;
+
+    do
+    {
+#if 0
+        Py_Initialize();
+        if (!Py_IsInitialized())
+        {
+            printf("Py_Initialize error!\n");
+            break;
+        }
+#endif
+
+        PyRun_SimpleString("import sys");
+        PyRun_SimpleString("sys.path.append('../')");
+
+        pFile = PyUnicode_FromString(pyClass.c_str());
+        pModule = PyImport_Import(pFile);
+        if (!pModule)
+        {
+            printf("PyImport_Import tracker_api.py failed!\n");
+            break;
+        }
+
+        m_pDict = PyModule_GetDict(pModule);
+        if (!m_pDict)
+        {
+            printf("PyModule_GetDict tracker_api.py failed!\n");
+            break;
+        }
+
+        pClass = PyDict_GetItemString(m_pDict, "ObjectApi");
+        if (!pClass || !PyCallable_Check(pClass))
+        {
+            printf("PyDict_GetItemString tracker_api failed!\n");
+            break;
+        }
+
+        m_pHandle = PyObject_CallObject(pClass, nullptr);
+        if (!m_pHandle)
+        {
+            printf("PyInstance_New ObjectApi failed!\n");
+            break;
+        }
+    } while (0);
+
+    if (pClass)
+        Py_DECREF(pClass);
+    //if (m_pDict)
+    //       Py_DECREF(m_pDict);
+    if (pModule)
+        Py_DECREF(pModule);
+    if (pFile)
+        Py_DECREF(pFile);
+
+    Py_UNBLOCK_THREADS;
+    Py_END_ALLOW_THREADS;
+    PyGILState_Release(gstate);
+
+    printf("Engine_api::Engine_api() end!\n");
+}
+
+
 Engine_api::~Engine_api()
 {
     PyGILState_STATE gstate;
@@ -95,25 +168,40 @@ Engine_api::~Engine_api()
     printf("EnginePy::~EnginePy() end!\n");
 }
 
-void Engine_api::get_result(Mat frame)
+vector<int> Engine_api::get_result(Mat frame, std::string mode)
 {
+    PyObject *pyResult;
+
+    auto sz = frame.size();
+    int x = sz.width;
+    int y = sz.height;
+    int z = frame.channels();
+    uchar *CArrays = new uchar[x*y*z];//这一行申请的内存需要释放指针，否则存在内存泄漏的问题
+
     PyGILState_STATE gstate;
     gstate = PyGILState_Ensure(); //申请获取GIL
     Py_BEGIN_ALLOW_THREADS;
     Py_BLOCK_THREADS;
 
-    do
-    {
-        PyObject *ArgList1 = PyTuple_New(1);
-        mat2np(frame, ArgList1);
-        std::cout << "py infer start" << std::endl;
-        PyObject *pyResult1 = PyObject_CallMethod(m_pHandle,"get_result","O",ArgList1);
-        std::cout << "py infer end" << std::endl;
-    } while(0);
+    PyObject *ArgList1 = PyTuple_New(1);
+    mat2np(frame, ArgList1, CArrays);
+    std::cout << "py infer start" << std::endl;
+    std::string pyMethod = "get_result" + mode;
+//    PyObject_CallMethod(m_pHandle, "test", "0", ArgList1);
+    pyResult = PyObject_CallMethod(m_pHandle,pyMethod.c_str(),"O",ArgList1);
+    Py_DECREF(ArgList1);
+    delete []CArrays ;
+    CArrays =nullptr;
+    std::cout << "py infer end" << std::endl;
 
     Py_UNBLOCK_THREADS;
     Py_END_ALLOW_THREADS;
     PyGILState_Release(gstate);
+
+    vector<int> vret0;
+    list2vector(pyResult,vret0);
+
+    return vret0;
 }
 
 void Engine_api::test(){

@@ -5,7 +5,7 @@ import time
 fourcc = cv2.VideoWriter_fourcc('M', 'P', '4', 'V')  # 保存 mp4
 path = ''
 out_path = 'asd.mp4'
-video_time = 2*60*20
+video_time = 1*60*20
 
 
 def make_video():

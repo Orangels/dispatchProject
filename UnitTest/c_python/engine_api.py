@@ -29,17 +29,23 @@ class ObjectApi():
         frame = img
         # return ret
         print("py get result start")
-        cv2.imwrite('aaa.jpg', frame)
         try:
+            print(1111)
             result = self.det(frame)
         except Exception as e:
             print('***********')
             print(e)
             traceback.print_exc()
             print('***********')
+
+            # del img
+            # gc.collect()
+
             return ret
         print("py get result end")
         if len(result["im_labels"]) == 0:
+            # del img
+            # gc.collect()
             return ret
         for label, det in zip(result["im_labels"], result["im_dets"]):
             if det[4] > 0.5:
@@ -50,6 +56,8 @@ class ObjectApi():
                 ret.append(int(det[2]))
                 ret.append(int(det[3]))
         print(ret)
+        # del img
+        # gc.collect()
         return ret
 
     def time_test(self):
@@ -60,7 +68,7 @@ class ObjectApi():
         print('time test 100 times avg = ', (ed - s1)/100)
 
 
-    def test(self):
+    def test(self, img):
         print("c python test")
 
 if __name__ == '__main__':
