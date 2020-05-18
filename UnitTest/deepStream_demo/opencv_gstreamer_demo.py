@@ -6,6 +6,49 @@ import cv2
 import numpy as np
 import time
 
+
+def open_cam_rtsp(uri, width, height, latency,use_h264):
+    uri_str=uri[0:4]
+    if (uri_str != "rtsp"):
+        if (uri_str != "rtmp"):
+            is_file = 1
+        return cv2.VideoCapture(uri)
+
+    if use_h264:
+        gst_str = ('rtspsrc location={} latency={} ! '
+                   'rtph264depay ! h264parse ! omxh264dec ! '
+                   'nvvidconv ! '
+                   'video/x-raw, width=(int){}, height=(int){}, '
+                   'format=(string)BGRx ! '
+                   'videoconvert ! appsink').format(uri, latency, width, height)
+    else:
+        gst_str = ('rtspsrc location={} latency={} ! '
+                   'rtph265depay ! h265parse ! omxh265dec ! '
+                   'nvvidconv ! '
+                   'video/x-raw, width=(int){}, height=(int){}, '
+                   'format=(string)BGRx ! '
+                   'videoconvert ! appsink').format(uri, latency, width, height)
+    return cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
+
+def open_cam_usb(dev, width, height):
+    gst_str = ('v4l2src device=/dev/video{} ! '
+               'video/x-raw, width=(int){}, height=(int){}, '
+               'format=(string)RGB ! '
+               'videoconvert ! appsink').format(dev, width, height)
+    return cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
+
+def open_cam_onboard(width, height):
+    gst_str = ('nvcamerasrc ! '
+               'video/x-raw(memory:NVMM), '
+               'width=(int)2592, height=(int)1458, '
+               'format=(string)I420, framerate=(fraction)30/1 ! '
+               'nvvidconv ! '
+               'video/x-raw, width=(int){}, height=(int){}, '
+               'format=(string)BGRx ! '
+               'videoconvert ! appsink').format(width, height)
+    return cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
+
+
 if __name__ == "__main__":
 
     image_width = 640

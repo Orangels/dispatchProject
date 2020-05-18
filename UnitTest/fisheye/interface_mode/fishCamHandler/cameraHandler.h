@@ -10,7 +10,8 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
 #include <cuda_gl_interop.h>
-
+#include <vector>
+#include <iostream>
 
 class cameraHandler : public IMV_CameraInterface {
 public:
@@ -28,6 +29,9 @@ public:
 
     IMV_Buffer input_buffer;
     IMV_Buffer output_buffer;
+
+    void GetInputPointFromOutputPoint(int output_x, int output_y, int *input_x, int *input_y);
+    void GetInputPolygonFromOutputPolygon(std::vector<float> &output_, float *input_);
 
 private:
     cameraHandler(int vInput_width, int vInput_height, unsigned char *vInput_data,

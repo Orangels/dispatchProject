@@ -137,7 +137,7 @@ void dewrapView(int mode){
     int frame_num = 1000;
     int64_t sum = 0;
     while (cap.read(src)){
-        if (frame_num > 1100) break;
+        if (frame_num > 1010) break;
         frame_num++;
 
         int64_t start = getCurrentTime();
@@ -157,7 +157,7 @@ void dewrapView(int mode){
         }
 
     }
-    cout << "avg time cost : " << sum/100 << endl;
+    cout << "avg time cost : " << sum/10 << endl;
 
 //    DestroyGLContext();
 //    writer.release();
@@ -294,89 +294,125 @@ void dewrapViewTotal(){
 }
 
 int main(int argc, char *argv[]){
-//    auto thread_method = [&](){
-//        dewrapView(0);
-//    };
-//
-//    auto thread_method_2 = [&](){
-//        dewrapView(1);
-//    };
 
-//    thread thread_center(thread_method);
-//    thread thread_center_2(thread_method_2);
-//    thread_center.join();
-//    thread_center_2.join();
+    //    google::ParseCommandLineFlags(&argc, &argv, true);
+    cv::Size size_center = CalculateSize("center");
+    cv::Size size_perimeter = CalculateSize("perimeter");
+    cv::Mat src;
+    cv::Mat dst_center(size_center, CV_8UC3);
+    cv::Mat dst_perimeter(size_perimeter, CV_8UC3);
+    cv::Mat dst_perimeter_resize(cv::Size(size_perimeter.width / 2, size_perimeter.height / 2), CV_8UC3);
 
-    dewrapViewTotal();
+    cv::VideoCapture cap(FLAGS_input.c_str());
 
-//    //    google::ParseCommandLineFlags(&argc, &argv, true);
-//    cv::Size size_center = CalculateSize("center");
-//    cv::Size size_perimeter = CalculateSize("perimeter");
-//    cv::Mat src;
-//    cv::Mat dst_center(size_center, CV_8UC3);
-//    cv::Mat dst_perimeter(size_perimeter, CV_8UC3);
-//    cv::Mat dst_perimeter_resize(cv::Size(size_perimeter.width / 2, size_perimeter.height / 2), CV_8UC3);
-//
-//    cv::VideoCapture cap(FLAGS_input.c_str());
-//
-//    if (!cap.isOpened()) {
-//        std::cerr << "Unable to open video file for capturing" << std::endl;
-//    }
-//
-//    int fourcc = int(cap.get(cv::CAP_PROP_FOURCC));
-//    double fps = cap.get(cv::CAP_PROP_FPS);
-//    int frame_count = int(cap.get(cv::CAP_PROP_FRAME_COUNT));
-//    int current_frame = 0, width = 1280, height = 640;
-//    cap.read(src);
-//
-////    cv::VideoWriter writer(FLAGS_output.c_str(), CV_FOURCC('M', 'P', '4', 'V'), 20, size_perimeter);
-//
+    if (!cap.isOpened()) {
+        std::cerr << "Unable to open video file for capturing" << std::endl;
+    }
+
+    int fourcc = int(cap.get(cv::CAP_PROP_FOURCC));
+    double fps = cap.get(cv::CAP_PROP_FPS);
+    int frame_count = int(cap.get(cv::CAP_PROP_FRAME_COUNT));
+    int current_frame = 0, width = 1280, height = 640;
+    cap.read(src);
+//    src = cv::imread("/home/user/workspace/xxs/DPH_Server/build/imgs_detections/10100.jpg");
+
+
+//    cv::VideoWriter writer(FLAGS_output.c_str(), CV_FOURCC('M', 'P', '4', 'V'), 20, size_perimeter);
+
 //    Mat resize_src;
 //    resize(src, resize_src, cv::Size(src.cols, src.rows));
-//
-//    cout << src.cols << "  " << src.rows << endl;
-//    cout << dst_perimeter.cols << "  " << dst_perimeter.rows << endl;
-//    cout << dst_center.cols << "  " << dst_center.rows << endl;
-//
-////    cameraGHandler* camera;
-//
-////    0: gpu, 1:cpu
-////    if (mode == 0) {
-//    cameraGHandler* camera_per = new cameraGHandler(src.cols, src.rows, src.data,
-//                                    dst_perimeter.cols, dst_perimeter.rows, dst_perimeter.data,
-//                                    FLAGS_perimeter_top_angle,
-//                                    FLAGS_perimeter_bottom_angle);
-////    } else {
-////    cameraGHandler* camera_center = new cameraGHandler(src.cols, src.rows, src.data,
-////                                    dst_center.cols, dst_center.rows, dst_center.data,
-////                                    FLAGS_center_zoom_angle);
-////    }
-//
-//    int frame_num = 1000;
-//    int64_t sum = 0;
-//    while (cap.read(src)){
-//        if (frame_num > 1100) break;
-//        frame_num++;
-//
-//        int64_t start = getCurrentTime();
-//        camera_per->run(src.data);
-////        camera_center->run(src.data);
-//        int64_t end = getCurrentTime();
-//        sum += (end-start);
-////        cout <<"mode : " << mode << " frame num : " << frame_num << " cost : " << end-start << endl;
-//
-//        string img_path, img_path_center, img_path_ori;
-//        img_path = "./imgs/" + to_string(frame_num) + ".jpg";
-//        img_path_center = "./imgs_center/" + to_string(frame_num) + ".jpg";
-//        img_path_ori = "./imgs_ori/" + to_string(frame_num) + ".jpg";
-////        if (mode == 0) {
-//            cv::imwrite(img_path, dst_perimeter);
-////        } else {
-////            cv::imwrite(img_path_center, dst_center);
-////        }
-//
+
+    cout << src.cols << "  " << src.rows << endl;
+    cout << dst_perimeter.cols << "  " << dst_perimeter.rows << endl;
+    cout << dst_center.cols << "  " << dst_center.rows << endl;
+
+//    cameraGHandler* camera;
+
+//    0: gpu, 1:cpu
+//    if (mode == 0) {
+    cameraHandler* camera_per = new cameraHandler(src.cols, src.rows, src.data,
+                                    dst_perimeter.cols, dst_perimeter.rows, dst_perimeter.data,
+                                    FLAGS_perimeter_top_angle,
+                                    FLAGS_perimeter_bottom_angle);
+//    } else {
+//    cameraHandler* camera_center = new cameraHandler(src.cols, src.rows, src.data,
+//                                    dst_center.cols, dst_center.rows, dst_center.data,
+//                                    FLAGS_center_zoom_angle);
 //    }
-//    cout << "avg time cost : " << sum/100 << endl;
+
+    int frame_num = 1000;
+    int64_t sum = 0;
+    while (cap.read(src)){
+        if (frame_num > 1010) break;
+        frame_num++;
+
+        int64_t start = getCurrentTime();
+        camera_per->run(src.data);
+
+//        std::vector<float> output_ = {198, 677, 332, 336, 761, 420, 591, 940};
+//        float input_[8];
+
+//        下面代码块注释掉可以跑
+//        std::vector<float> output_ = {1908, 1093, 2069, 1493};
+//        float input_[4];
+//        int x, y;
+//        std::cout << "GetOutputPolygonFromInputPolygon" << std::endl;
+//        for (unsigned int i = 0; i < output_.size() / 2; i++) {
+//            float pan, tilt;
+//            camera_per->GetPositionFromOutputVideoPoint(int(output_[2 * i] ), int(output_[2 * i + 1]), &pan, &tilt);
+//            cout << "pan : " << pan << " tilt : " << tilt <<endl;
+//            camera_per->GetInputVideoPointFromPosition(pan, tilt, &x, &y);
+//
+////            camera_per->GetInputPointFromOutputPoint(int(output_[2 * i] ), int(output_[2 * i + 1] ), &x, &y);
+//            input_[2 * i] = float(x), input_[2 * i + 1] = float(y);
+////            std::cout << x * 0.4 << ',' << y * 0.4 << ':' << output_[i * 2] << ',' << output_[i * 2 + 1] << "  |  ";
+//        }
+//        cv::rectangle(dst_perimeter,cvPoint(output_[0] ,output_[1]),cvPoint(output_[2],output_[3]),Scalar(0,255,0),1,1,0);
+//        cv::rectangle(src,cvPoint(input_[0] ,input_[1]),cvPoint(input_[2],input_[3]),Scalar(0,255,0),1,1,0);
+//        std::cout << std::endl;
+
+        float pan_0, tilt_0, pan_1, tilt_1;
+        int input_x_0;
+        int input_y_0;
+        int input_x_1;
+        int input_y_1;
+        cout << "start transform" << endl;
+        camera_per->GetPositionFromOutputVideoPoint(1908, 1093, &pan_0, &tilt_0);
+        camera_per->GetInputVideoPointFromPosition(pan_0, tilt_0, &input_x_0, &input_y_0);
+        cout << "x : " << input_x_0 << " y : " << input_y_0 <<endl;
+//        cout << *input_x_0 << " " << *input_y_0 << endl;
+
+        camera_per->GetPositionFromOutputVideoPoint(2069, 1493, &pan_1, &tilt_1);
+        camera_per->GetInputVideoPointFromPosition(pan_1, tilt_1, &input_x_1, &input_y_1);
+        cout << "x : " << input_x_1 << " y : " << input_y_1 <<endl;
+        cout << "end transform" << endl;
+
+//
+//        cv::rectangle(dst_perimeter,cvPoint(output_[0] ,output_[1]),cvPoint(output_[2],output_[3]),Scalar(0,255,0),1,1,0);
+        cv::rectangle(src,cvPoint(input_x_0 ,input_y_0),cvPoint(input_x_1,input_y_1),Scalar(0,255,0),1,1,0);
+
+
+
+
+//        camera_center->run(src.data);
+        int64_t end = getCurrentTime();
+        sum += (end-start);
+//        cout <<"mode : " << mode << " frame num : " << frame_num << " cost : " << end-start << endl;
+
+        string img_path, img_path_center, img_path_ori;
+        img_path = "./imgs/" + to_string(frame_num) + ".jpg";
+        img_path_center = "./imgs_center/" + to_string(frame_num) + ".jpg";
+        img_path_ori = "./imgs_ori/" + to_string(frame_num) + ".jpg";
+//        if (mode == 0) {
+            cv::imwrite(img_path, dst_perimeter);
+            cv::imwrite(img_path_ori, src);
+//        } else {
+//            cv::imwrite(img_path_center, dst_center);
+//        }
+
+
+    }
+    cout << "avg time cost : " << sum/100 << endl;
 
     return 0;
 }

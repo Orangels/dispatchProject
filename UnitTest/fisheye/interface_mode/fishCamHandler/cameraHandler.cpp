@@ -112,9 +112,26 @@ cameraHandler::cameraHandler (
 }
 
 int cameraHandler::run(unsigned char *vInput_data) {
-
     input_buffer.data = vInput_data;
     Update();
 
     return 0;
+}
+
+
+void cameraHandler::GetInputPointFromOutputPoint(
+        int output_x, int output_y, int *input_x, int *input_y) {
+    float pan, tilt;
+    GetPositionFromOutputVideoPoint(output_x, output_y, &pan, &tilt);
+    cout << "pan : " << pan << " tilt : " << tilt <<endl;
+    GetInputVideoPointFromPosition(pan, tilt, input_x, input_y);
+    cout << "x : " << *input_x << " y : " << *input_y <<endl;
+}
+
+void cameraHandler::GetInputPolygonFromOutputPolygon(std::vector<float> &output_, float *input_) {
+    int x, y;
+    for (unsigned int i = 0; i < output_.size() / 2; i++) {
+        GetInputPointFromOutputPoint(int(output_[2 * i]), int(output_[2 * i + 1]), &x, &y);
+        input_[2 * i] = float(x), input_[2 * i + 1] = float(y);
+    }
 }
