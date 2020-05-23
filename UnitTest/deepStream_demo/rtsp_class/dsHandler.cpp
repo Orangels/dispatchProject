@@ -43,11 +43,8 @@ Mat writeImage(GstBuffer *buf){
     if (!gst_buffer_map (buf, &in_map_info, GST_MAP_READ)) {
         g_print ("Error: Failed to map gst buffer\n");
         gst_buffer_unmap (buf, &in_map_info);
-//        return GST_PAD_PROBE_OK;
     }
     NvBufSurface *surface = (NvBufSurface *)in_map_info.data;
-
-    g_print("mem type : %d\n", surface->memType);
 
     NvDsBatchMeta *batch_meta = gst_buffer_get_nvds_batch_meta (buf);
     l_frame = batch_meta->frame_meta_list;
@@ -89,19 +86,9 @@ Mat writeImage(GstBuffer *buf){
         gint frame_step = surface->surfaceList[frame_meta->batch_id].pitch;
 
         cv::Mat frame = cv::Mat(frame_height, frame_width, CV_8UC4, src_data, frame_step);
-        g_print("%d\n",frame.channels());
-        g_print("%d\n",frame.rows);
-        g_print("%d\n",frame.cols);
 
-        string img_path;
-        int frame_number = dsHandler::pic_num;
-        dsHandler::pic_num++;
-        img_path = "./imgs/" + to_string(frame_number) + ".jpg";
-
-//        cv::Mat out_mat = cv::Mat (cv::Size(frame_width, frame_height), CV_8UC3);
         out_mat = cv::Mat (cv::Size(frame_width, frame_height), CV_8UC3);
         cv::cvtColor(frame, out_mat, CV_RGBA2BGR);
-//        cv::imwrite(img_path, out_mat);
         if(src_data != NULL) {
             free(src_data);
             src_data = NULL;
@@ -111,16 +98,44 @@ Mat writeImage(GstBuffer *buf){
     return out_mat;
 }
 
-GstPadProbeReturn dsHandler::osd_sink_pad_buffer_probe (GstPad * pad, GstPadProbeInfo * info, gpointer u_data){
+GstPadProbeReturn osd_sink_pad_buffer_probe (GstPad * pad, GstPadProbeInfo * info, gpointer u_data, dsHandler* ds){
     GstBuffer *buf = (GstBuffer *) info->data;
     Mat frame = writeImage(buf);
 
-    std::unique_lock<std::mutex> guard(myMutex);
-    imgQueue.push(frame);
-    con_v_notification.notify_all();
-    guard.unlock();
+    // 跳帧
+    ds->pic_num++;
+    std::unique_lock<std::mutex> guard(ds->myMutex);
+    if (ds->pic_num % 2 == 0){
+        ds->imgQueue.push(frame);
+        ds->con_v_notification.notify_all();
+        guard.unlock();
+    }
 
     return GST_PAD_PROBE_OK;
+}
+
+namespace {
+    std::function<GstPadProbeReturn(GstPad * , GstPadProbeInfo * , gpointer)> callback_0, callback_1, callback_2, callback_3;
+
+    vector<std::function<GstPadProbeReturn(GstPad * , GstPadProbeInfo * , gpointer)>> callBackList = {callback_0,callback_1,callback_2,callback_3};
+
+    GstPadProbeReturn wrapper_0 (GstPad * pad, GstPadProbeInfo * info, gpointer u_data){
+        return callBackList[0](pad, info,  u_data);
+    }
+
+    GstPadProbeReturn wrapper_1 (GstPad * pad, GstPadProbeInfo * info, gpointer u_data){
+        return callBackList[1](pad, info,  u_data);
+    }
+
+    GstPadProbeReturn wrapper_2 (GstPad * pad, GstPadProbeInfo * info, gpointer u_data){
+        return callBackList[2](pad, info,  u_data);
+    }
+
+    GstPadProbeReturn wrapper_3 (GstPad * pad, GstPadProbeInfo * info, gpointer u_data){
+        return callBackList[3](pad, info,  u_data);
+    }
+
+    vector<GstPadProbeCallback> wrapperList = {wrapper_0,wrapper_1,wrapper_2,wrapper_3};
 }
 
 
@@ -128,7 +143,7 @@ dsHandler::dsHandler(){
 
 }
 
-dsHandler::dsHandler(string vRTSPCAM, int vMUXER_OUTPUT_WIDTH, int vMUXER_OUTPUT_HEIGHT, int vMUXER_BATCH_TIMEOUT_USEC) :
+dsHandler::dsHandler(string vRTSPCAM, int vMUXER_OUTPUT_WIDTH, int vMUXER_OUTPUT_HEIGHT, int vMUXER_BATCH_TIMEOUT_USEC, int camNum, int mode) :
         RTSPCAM(vRTSPCAM), MUXER_OUTPUT_WIDTH(vMUXER_OUTPUT_WIDTH), MUXER_OUTPUT_HEIGHT(vMUXER_OUTPUT_HEIGHT),
         MUXER_BATCH_TIMEOUT_USEC(vMUXER_BATCH_TIMEOUT_USEC){
 
@@ -140,8 +155,125 @@ dsHandler::dsHandler(string vRTSPCAM, int vMUXER_OUTPUT_WIDTH, int vMUXER_OUTPUT
     /// Create elements
     source = gst_element_factory_make("rtspsrc", "source");
     g_object_set(G_OBJECT (source), "latency", 2000, NULL);
-    rtppay = gst_element_factory_make("rtph264depay", "depayl");
-    parse = gst_element_factory_make("h264parse", "parse");
+    if (mode == 0){
+        rtppay = gst_element_factory_make("rtph264depay", "depayl");
+        parse = gst_element_factory_make("h264parse", "parse");
+    } else{
+        rtppay = gst_element_factory_make("rtph265depay", "depayl");
+        parse = gst_element_factory_make("h265parse", "parse");
+    }
+
+
+#ifdef PLATFORM_TEGRA
+    decoder = gst_element_factory_make("nvv4l2decoder", "nvv4l2-decoder");
+    GstElement *streammux = gst_element_factory_make("nvstreammux", "stream-muxer");
+
+    GstElement *nvvidconv = gst_element_factory_make("nvvideoconvert", "nvvideo-converter");
+    GstElement *nvosd = gst_element_factory_make("nvdsosd", "nv-onscreendisplay");
+
+    sink = gst_element_factory_make ( "fakesink", "sink");
+    if (!pipeline || !streammux  || !nvvidconv || !nvosd ) {
+        g_printerr("One element could not be created. Exiting.\n");
+    }
+    g_object_set(G_OBJECT (streammux), "width", MUXER_OUTPUT_WIDTH, "height",
+                 MUXER_OUTPUT_HEIGHT, "batch-size", 1,
+                 "batched-push-timeout", MUXER_BATCH_TIMEOUT_USEC, NULL);
+
+#else
+    decoder = gst_element_factory_make("avdec_h264", "decode");
+    sink = gst_element_factory_make("appsink", "sink");
+#endif
+    if (!pipeline || !source || !rtppay || !parse || !decoder || !sink) {
+        g_printerr("One element could not be created.\n");
+    }
+    g_object_set(G_OBJECT (sink), "sync", FALSE, NULL);
+    g_object_set(GST_OBJECT(source), "location", RTSPCAM.c_str(), NULL);
+
+    /// 加入插件
+#ifdef PLATFORM_TEGRA
+    gst_bin_add_many(GST_BIN (pipeline),
+                     source, rtppay, parse, decoder, streammux,
+                     nvvidconv, nvosd, sink, NULL);
+#else
+    gst_bin_add_many(GST_BIN (pipeline),
+                     source, rtppay, parse, decoder, sink, NULL);
+#endif
+    // listen for newly created pads
+    g_signal_connect(source, "pad-added", G_CALLBACK(cb_new_rtspsrc_pad), rtppay);
+
+#ifdef PLATFORM_TEGRA
+    GstPad *sinkpad, *srcpad;
+    gchar pad_name_sink[16] = "sink_0";
+    gchar pad_name_src[16] = "src";
+
+    sinkpad = gst_element_get_request_pad(streammux, pad_name_sink);
+    if (!sinkpad) {
+        g_printerr("Streammux request sink pad failed. Exiting.\n");
+    }
+    //获取指定element中的指定pad  该element为 streammux
+    srcpad = gst_element_get_static_pad(decoder, pad_name_src);
+    if (!srcpad) {
+        g_printerr("Decoder request src pad failed. Exiting.\n");
+    }
+
+    if (gst_pad_link(srcpad, sinkpad) != GST_PAD_LINK_OK) {
+        g_printerr("Failed to link decoder to stream muxer. Exiting.\n");
+    }
+    //gst_pad_link
+    gst_object_unref(sinkpad);
+    gst_object_unref(srcpad);
+#endif
+
+    /// 链接插件
+#ifdef PLATFORM_TEGRA
+    if (!gst_element_link_many(rtppay, parse, decoder, NULL)) {
+        printf("\nFailed to link elements 0.\n");
+    }
+
+    if (!gst_element_link_many(streammux, nvvidconv, nvosd, sink, NULL)) {
+        printf("\nFailed to link elements 2.\n");
+    }
+#else
+    if (!gst_element_link_many(rtppay, parse, decoder, sink, NULL)) {
+        printf("\nFailed to link elements.\n");
+    }
+#endif
+
+    GstPad *osd_sink_pad = NULL;
+    osd_sink_pad = gst_element_get_static_pad (sink, "sink");
+
+    if (!osd_sink_pad)
+        g_print ("Unable to get sink pad\n");
+    else
+        callBackList[camNum] = std::bind(&osd_sink_pad_buffer_probe, std::placeholders::_1,
+                             std::placeholders::_2,std::placeholders::_3, this);
+        gst_pad_add_probe (osd_sink_pad, GST_PAD_PROBE_TYPE_BUFFER,
+                           wrapperList[camNum], NULL, NULL);
+
+
+}
+
+dsHandler::dsHandler(string vRTSPCAM, int vMUXER_OUTPUT_WIDTH, int vMUXER_OUTPUT_HEIGHT, int vMUXER_BATCH_TIMEOUT_USEC, GstPadProbeCallback callback, int mode=0) :
+        RTSPCAM(vRTSPCAM), MUXER_OUTPUT_WIDTH(vMUXER_OUTPUT_WIDTH), MUXER_OUTPUT_HEIGHT(vMUXER_OUTPUT_HEIGHT),
+        MUXER_BATCH_TIMEOUT_USEC(vMUXER_BATCH_TIMEOUT_USEC){
+
+    gst_init(NULL, NULL);
+
+    /// Build Pipeline
+    pipeline = gst_pipeline_new("ls");
+
+    /// Create elements
+    source = gst_element_factory_make("rtspsrc", "source");
+    g_object_set(G_OBJECT (source), "latency", 2000, NULL);
+    if (mode == 0){
+        rtppay = gst_element_factory_make("rtph264depay", "depayl");
+        parse = gst_element_factory_make("h264parse", "parse");
+    } else{
+        rtppay = gst_element_factory_make("rtph265depay", "depayl");
+        parse = gst_element_factory_make("h265parse", "parse");
+    }
+
+
 #ifdef PLATFORM_TEGRA
     decoder = gst_element_factory_make("nvv4l2decoder", "nvv4l2-decoder");
     GstElement *streammux = gst_element_factory_make("nvstreammux", "stream-muxer");
@@ -227,8 +359,10 @@ dsHandler::dsHandler(string vRTSPCAM, int vMUXER_OUTPUT_WIDTH, int vMUXER_OUTPUT
     if (!osd_sink_pad)
         g_print ("Unable to get sink pad\n");
     else
+//        gst_pad_add_probe (osd_sink_pad, GST_PAD_PROBE_TYPE_BUFFER,
+//                           osd_sink_pad_buffer_probe, NULL, NULL);
         gst_pad_add_probe (osd_sink_pad, GST_PAD_PROBE_TYPE_BUFFER,
-                           osd_sink_pad_buffer_probe, NULL, NULL);
+                           callback, NULL, NULL);
 }
 
 void dsHandler::run(){

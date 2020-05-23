@@ -17,6 +17,8 @@
 #include "nvbufsurftransform.h"
 #include <iostream>
 
+#include <functional>
+#include <vector>
 #include <mutex>
 #include <queue>
 #include <condition_variable>
@@ -25,6 +27,7 @@
 using namespace std;
 using namespace cv;
 
+Mat writeImage(GstBuffer *buf);
 
 class dsHandler {
     public:
@@ -34,17 +37,23 @@ class dsHandler {
         string RTSPCAM;
 
         dsHandler();
-        dsHandler(string vRTSPCAM, int vMUXER_OUTPUT_WIDTH, int vMUXER_OUTPUT_HEIGHT, int vMUXER_BATCH_TIMEOUT_USEC);
+        dsHandler(string vRTSPCAM, int vMUXER_OUTPUT_WIDTH, int vMUXER_OUTPUT_HEIGHT, int vMUXER_BATCH_TIMEOUT_USEC, int camNum, int mode);
+        dsHandler(string vRTSPCAM, int vMUXER_OUTPUT_WIDTH, int vMUXER_OUTPUT_HEIGHT, int vMUXER_BATCH_TIMEOUT_USEC, GstPadProbeCallback callback, int mode);
+
         ~dsHandler(){
 
         };
         void run();
 
-        static GstPadProbeReturn osd_sink_pad_buffer_probe (GstPad * pad, GstPadProbeInfo * info, gpointer u_data);
-        static queue<cv::Mat> imgQueue;
-        static mutex myMutex;
-        static condition_variable con_v_notification;
-        static int pic_num;
+
+//        friend GstPadProbeReturn osd_sink_pad_buffer_probe (GstPad * pad, GstPadProbeInfo * info, gpointer u_data);
+
+
+//        GstPadProbeReturn osd_sink_pad_buffer_probe (GstPad * pad, GstPadProbeInfo * info, gpointer u_data);
+        queue<cv::Mat> imgQueue;
+        mutex myMutex;
+        condition_variable con_v_notification;
+        int pic_num = 0;
     private:
         GstElement *pipeline = NULL, *source = NULL, *rtppay = NULL, *parse = NULL,
             *decoder = NULL, *sink = NULL, *filter1 = NULL;

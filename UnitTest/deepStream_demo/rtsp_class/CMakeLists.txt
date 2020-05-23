@@ -21,7 +21,7 @@ ENDIF (CMAKE_SYSTEM_NAME MATCHES "Linux")
 
 if (${CMAKE_SYSTEM} MATCHES "Linux-4.9.140-tegra")
     message("On TEGRA PLATFORM.")
-        add_definitions(-DPLATFORM_TEGRA)
+    add_definitions(-DPLATFORM_TEGRA)
     set(SYS_USR_LIB /usr/lib/aarch64-linux-gnu)
     set(SYS_LIB /lib/aarch64-linux-gnu)
     set(DS_LIB /opt/nvidia/deepstream/deepstream-4.0/lib)
@@ -68,3 +68,4 @@ link_libraries(
 )
 
 add_executable(deepstream_test1_app_demo_rtsp_ test.cpp dsHandler.cpp dsHandler.h)
+add_executable(test_ls main.cpp )
